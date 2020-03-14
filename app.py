@@ -28,28 +28,9 @@ def register():
 	filename = secure_filename(files.filename)
 
 	files = request.files['file']
-	files.save("./jsonfile")
+	files.save("./file/{}".format(filename))
 	return
 
-
-
-@app.route("/fileupload", methods=["POST"])
-def fileup():
-	# target='api'
-	# if not os.path.isdir(target):
-	# 	os.mkdir(target)
-
-	# files = request.files['file']
-	# filename = secure_filename(files.filename)
-	# destination="/fileout".join([target, filename])
-	# files.save(destination)
-	files = request.files['file']
-	# jsondata = request.get_json()
-	filename = secure_filename(files.filename)
-
-	files = request.files['file']
-	files.save("./jsonfile")
-	return ""
 
 
 if __name__ == '__main__':
