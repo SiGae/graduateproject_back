@@ -18,17 +18,28 @@ def hello_world():
 @app.route('/login', methods=['POST'])
 def checklogin():
 	jsondata = request.get_json()
-	print(jsondata)
-	return ""
+	with open("userdata/userlist.json", 'r') as fr:
+		userdata = json.loads(fr.read())
+		dic = dict()
+		if jsondata["username"] in userdata["id"] and jsondata["password"]==userdata["id"][jsondata["username"]]:
+			dic["user"] = "TRUE"
+		else :
+			dic["user"] = "ERROR"
+		out = json.dumps(dic)
+		
 
-@app.route("/register", methods=["POST"])
+	return jsonify(out)
+
+@app.route("/makeclass", methods=["POST"])
 def register():
-	files = request.files['file']
-	# jsondata = request.get_json()
-	filename = secure_filename(files.filename)
+	#files = request.files['file']
+	jsondata = request.get_json
+	print(jsondata)
+	
+	#filename = secure_filename(files.filename)
 
-	files = request.files['file']
-	files.save("./file/{}".format(filename))
+	#files = request.files['file']
+	#files.save("./file/{}".format(filename))
 	return ""
 
 
