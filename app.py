@@ -29,7 +29,7 @@ def register():
 
 	files = request.files['file']
 	files.save("./file/{}".format(filename))
-	return
+	return ""
 
 
 
