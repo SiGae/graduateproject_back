@@ -26,7 +26,7 @@ def checklogin():
 		else :
 			dic["user"] = "ERROR"
 		out = json.dumps(dic)
-		
+	print(out)		
 
 	return jsonify(out)
 
