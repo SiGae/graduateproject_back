@@ -22,12 +22,16 @@ def alwayTrue():
 		'userOnline' : 'true'
 	})
 
+
 @app.route('/register', methods=['POST'])
 def registerw():
 	jsondata = request.get_json()
 	print(jsondata)
 	with open("userdata/userlist.json", "r") as fr:
 		userdata = json.loads(fr.read())
+	if jsondata["username"] in userdata["id"]:
+		print("flag")
+		return jsonify({"auth" : "false"})
 	userdata["id"][jsondata['username']] = jsondata['password'] 
 	out = json.dumps(userdata)
 
