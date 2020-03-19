@@ -15,6 +15,13 @@ app = Flask(__name__)
 def hello_world():
 	return render_template('index.html')
 
+
+@app.route('/check', methods=['GET'])
+def alwayTrue():
+	return jsonify({
+		'userOnline' : 'true'
+	})
+
 @app.route('/login', methods=['POST'])
 def checklogin():
 	jsondata = request.get_json()
@@ -22,13 +29,12 @@ def checklogin():
 		userdata = json.loads(fr.read())
 		dic = dict()
 		if jsondata["username"] in userdata["id"] and jsondata["password"]==userdata["id"][jsondata["username"]]:
-			dic["user"] = "TRUE"
+			dic["auth"] = "TRUE"
 		else :
-			dic["user"] = "ERROR"
-		out = json.dumps(dic)
-	print(out)		
+			dic["auth"] = "ERROR"
+	print(dic)		
 
-	return jsonify(out)
+	return jsonify(dic)
 
 @app.route("/makeclass", methods=["POST"])
 def register():
