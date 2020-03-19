@@ -22,6 +22,29 @@ def alwayTrue():
 		'userOnline' : 'true'
 	})
 
+@app.route('/register', methods=['POST'])
+def registerw():
+	jsondata = request.get_json()
+	print(jsondata)
+	with open("userdata/userlist.json", "r") as fr:
+		userdata = json.loads(fr.read())
+	userdata["id"][jsondata['username']] = jsondata['password'] 
+	out = json.dumps(userdata)
+
+	with open("userdata/userlist.json", "w") as fa:
+		fa.write(out)
+	
+	with open("userdata/userlist.json", "r") as fb:
+		print(json.loads(fb.read()))
+	
+	return jsonify({"auth" : "true"})
+
+
+@app.route('/logout', methods=['POST'])
+def logout():
+	return "<script>alert('로그아웃 되었습니다.')</script>"
+
+
 @app.route('/login', methods=['POST'])
 def checklogin():
 	jsondata = request.get_json()
