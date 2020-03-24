@@ -9,6 +9,24 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS, cross_origin
 import logging
 
+def xlsxTojson(file):
+	df = pd.read_excel(file)
+	print(df.columns)
+
+	ddf0 = df["Unnamed: 5"]
+	ddf1 = df["Unnamed: 6"]
+	ad0 = ddf0.values.tolist()
+	ad1 = ddf1.values.tolist()
+	ad0 = ad0[10:]
+	ad1 = ad1[10:]
+	print(ad0)
+	print(ad1)
+	li = {}
+	for i in range(len(ad0)):
+    	li[ad0[i]] = ad1[i]
+	print(li)
+	return li
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -21,6 +39,10 @@ def alwayTrue():
 	return jsonify({
 		'userOnline' : 'true'
 	})
+
+@app.route('/makeclass', methods=['POST'])
+def createClass():
+	return ""
 
 
 @app.route('/register', methods=['POST'])
