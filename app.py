@@ -8,6 +8,9 @@ from flask import make_response
 from werkzeug.utils import secure_filename
 from flask_cors import CORS, cross_origin
 import logging
+import pandas as pd
+import pymysql
+import privateInfo as pri
 
 def xlsxTojson(file):
 	df = pd.read_excel(file)
@@ -23,15 +26,11 @@ def xlsxTojson(file):
 	print(ad1)
 	li = {}
 	for i in range(len(ad0)):
-    	li[ad0[i]] = ad1[i]
+		li[ad0[i]] = ad1[i]
 	print(li)
 	return li
 
 app = Flask(__name__)
-
-@app.route('/')
-def hello_world():
-	return render_template('index.html')
 
 
 @app.route('/check', methods=['GET'])
@@ -40,28 +39,78 @@ def alwayTrue():
 		'userOnline' : 'true'
 	})
 
-@app.route('/makeclass', methods=['POST'])
+@app.route('/makeclass_text', methods=['POST'])
 def createClass():
-	return ""
+	f = request.files['file']
+	js = request.form
+	tempdic = dict()
+	for i in js:
+		tempdic[i] = js[i]
+
+	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
+	cur  = con.cursor()
+
+	print('a')
+	sql = "select userId from user where name = \'{}\';".format(tempdic['userId'])
+	cur.execute(sql)
+	result = cur.fetchone()
+
+	print('b')
+	sql = '''insert INTO classInfo(className, classNo, classRoom, attend, userId) values (\'{0}\', \'{1}\',\'{2}\', \'{3}\', {4});'''.format(tempdic['subName'], tempdic['type'], tempdic['roomNumber'], str(xlsxTojson(f)), result[0])
+	print(sql)
+	cur.execute(sql)
+	con.commit()
+	con.close()
+
+	return {'success' : 'clear'}
+
+@app.route('/professor', methods=["POST"])
+def printlist():
+	jsondata = request.get_json()
+	print(jsondata)
+
+	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
+	cur  = con.cursor()
+	sql = "select * from classInfo where userId = {};".format(tempdic['userId'])
+	cur.execute(sql)
+	result = cur.fetchall()
+	tem = dict()
+	for i in result:
+		tem[i[0]] = i
+	print(tem)
+	return jsonify(tem)
+
 
 
 @app.route('/register', methods=['POST'])
 def registerw():
 	jsondata = request.get_json()
 	print(jsondata)
-	with open("userdata/userlist.json", "r") as fr:
-		userdata = json.loads(fr.read())
-	if jsondata["username"] in userdata["id"]:
-		print("flag")
-		return jsonify({"auth" : "false"})
-	userdata["id"][jsondata['username']] = jsondata['password'] 
-	out = json.dumps(userdata)
 
-	with open("userdata/userlist.json", "w") as fa:
-		fa.write(out)
+	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
+	cur  = con.cursor()
+
+	sql = "insert INTO user(name, email, password, phone, userType) values('{}', '{}', '{}', '{}', 0);".format(jsondata['username'], jsondata['e_mail'], jsondata['password'], jsondata['phone'])
+	cur.execute(sql)
+	con.commit()
+	con.close()
+
+	# with open("userdata/userlist.json", "r") as fr:
+	# 	userdata = json.loads(fr.read())
+	# if jsondata["username"] in userdata["id"]:
+	# 	print("flag")
+	# 	return jsonify({"auth" : "false"})
+	# sql = 'insert '
+	# userdata["id"][jsondata['username']] = jsondata['password'] 
+	# out = json.dumps(userdata)
+
+	# with open("userdata/userlist.json", "w") as fa:
+	# 	fa.write(out)
 	
-	with open("userdata/userlist.json", "r") as fb:
-		print(json.loads(fb.read()))
+	# with open("userdata/userlist.json", "r") as fb:
+	# 	print(json.loads(fb.read()))
+	
+
 	
 	return jsonify({"auth" : "true"})
 
@@ -74,28 +123,32 @@ def logout():
 @app.route('/login', methods=['POST'])
 def checklogin():
 	jsondata = request.get_json()
-	with open("userdata/userlist.json", 'r') as fr:
-		userdata = json.loads(fr.read())
-		dic = dict()
-		if jsondata["username"] in userdata["id"] and jsondata["password"]==userdata["id"][jsondata["username"]]:
+
+	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
+	cur  = con.cursor()
+
+	print(jsondata['username'])
+	print(jsondata['password'])
+
+	sql = "SELECT name, password from user"
+	cur.execute(sql)
+	result = cur.fetchall()
+	con.close()
+
+	dic = dict()
+
+	for i in result:
+		print(i[0])
+		print("pw = ")
+		print(i[1])
+		if jsondata["username"] == i[0] and jsondata["password"] == i[1]:
 			dic["auth"] = "TRUE"
-		else :
+			break
+		else:
 			dic["auth"] = "ERROR"
-	print(dic)		
+	print(dic)
 
 	return jsonify(dic)
-
-@app.route("/makeclass", methods=["POST"])
-def register():
-	#files = request.files['file']
-	jsondata = request.get_json
-	print(jsondata)
-	
-	#filename = secure_filename(files.filename)
-
-	#files = request.files['file']
-	#files.save("./file/{}".format(filename))
-	return ""
 
 
 
