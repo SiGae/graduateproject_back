@@ -71,14 +71,26 @@ def printlist():
 
 	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
 	cur  = con.cursor()
-	sql = "select * from classInfo where userId = {};".format(tempdic['userId'])
+
+	sql = "select userId from user where name = \'{}\';".format(jsondata['id'])
+	cur.execute(sql)
+	result = cur.fetchone()
+
+	sql = "select classId, classname from classInfo where userId = {};".format(result[0])
 	cur.execute(sql)
 	result = cur.fetchall()
 	tem = dict()
+	t = 0 
 	for i in result:
-		tem[i[0]] = i
-	print(tem)
-	return jsonify(tem)
+		s = {'id' : i[0], 'name' : i[1]}
+		tem[str(t)] = s
+		t+=1
+	out = dict()
+	out['subjectList'] = tem
+	out['success'] = 'true'
+	print(out)
+	
+	return jsonify(out)
 
 
 
