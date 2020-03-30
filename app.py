@@ -32,12 +32,20 @@ def xlsxTojson(file):
 
 app = Flask(__name__)
 
+@app.route('/getCheckmode', methods=['POST'])
+def outCheckboard():
+	jsondata = request.get_json()
+	print(jsondata)
+	
+	
 
 @app.route('/check', methods=['GET'])
 def alwayTrue():
 	return jsonify({
 		'userOnline' : 'true'
 	})
+
+
 
 @app.route('/makeclass_text', methods=['POST'])
 def createClass():
