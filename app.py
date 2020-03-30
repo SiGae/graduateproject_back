@@ -11,6 +11,7 @@ import logging
 import pandas as pd
 import pymysql
 import privateInfo as pri
+import ast
 
 def xlsxTojson(file):
 	df = pd.read_excel(file)
@@ -24,32 +25,67 @@ def xlsxTojson(file):
 	ad1 = ad1[10:]
 	print(ad0)
 	print(ad1)
-	li = {}
+	li = dict()
 	for i in range(len(ad0)):
-		li[ad0[i]] = ad1[i]
+		temp = dict()
+		temp["id"] = str(ad0[i])
+		temp["name"] = str(ad1[i])
+		li[str(i)] = temp
 	print(li)
 	return li
 
 app = Flask(__name__)
 
-@app.route('/getCheckmode', methods=['POST'])
+@app.route('/getCheckMode', methods=['POST'])
 def outCheckboard():
 	jsondata = request.get_json()
 	print(jsondata)
+
+	data = str(jsondata["month"]) + "/" + str(jsondata["day"])
+	print(data)
+
+	sql = "select attend from classInfo where classId = {}".format(jsondata['subId'])
+	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
+	cur = con.cursor()
+	cur.execute(sql)
+
+	result = cur.fetchall()
+	result= result[0][0]
+	result = ast.literal_eval(result)
+	if data in result.keys():
+		return jsonify(result)
+	else:
+		temp = dict()
+		temp1 = dict()
+		for i in range(len(result["init"])):
 	
+			temp[str(i)] = {
+				"id" : result["init"][str(i)]["id"],
+				"name" : result["init"][str(i)]["name"],
+				"status" : 0
+			}
+
+		print(result["init"])
+		print(temp)
+
+		out = {
+			data : temp
+		}
+		return jsonify(out)
+
 	
 
 @app.route('/check', methods=['GET'])
 def alwayTrue():
 	return jsonify({
-		'userOnline' : 'true'
+		"userOnline" : "true"
 	})
 
 
 
 @app.route('/makeclass_text', methods=['POST'])
 def createClass():
-	f = request.files['file']
+	f = request.files["file"]
 	js = request.form
 	tempdic = dict()
 	for i in js:
@@ -62,15 +98,17 @@ def createClass():
 	sql = "select userId from user where name = \'{}\';".format(tempdic['userId'])
 	cur.execute(sql)
 	result = cur.fetchone()
+	attend = dict()
+	attend["init"] = xlsxTojson(f)
 
 	print('b')
-	sql = '''insert INTO classInfo(className, classNo, classRoom, attend, userId) values (\'{0}\', \'{1}\',\'{2}\', \'{3}\', {4});'''.format(tempdic['subName'], tempdic['type'], tempdic['roomNumber'], str(xlsxTojson(f)), result[0])
+	sql = '''insert INTO classInfo(className, classNo, classRoom, attend, userId) values (\'{0}\', \'{1}\',\'{2}\', \"{3}\", {4});'''.format(tempdic['subName'], tempdic['type'], tempdic['roomNumber'], str(attend), result[0])
 	print(sql)
 	cur.execute(sql)
 	con.commit()
 	con.close()
 
-	return {'success' : 'clear'}
+	return {"success" : "clear"}
 
 @app.route('/professor', methods=["POST"])
 def printlist():
@@ -90,12 +128,12 @@ def printlist():
 	tem = dict()
 	t = 0 
 	for i in result:
-		s = {'id' : i[0], 'name' : i[1]}
+		s = {"id" : i[0], "name" : i[1]}
 		tem[str(t)] = s
 		t+=1
 	out = dict()
-	out['subjectList'] = tem
-	out['success'] = 'true'
+	out["subjectList"] = tem
+	out["success"] = 'true'
 	print(out)
 	
 	return jsonify(out)
@@ -110,7 +148,7 @@ def registerw():
 	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
 	cur  = con.cursor()
 
-	sql = "insert INTO user(name, email, password, phone, userType) values('{}', '{}', '{}', '{}', 0);".format(jsondata['username'], jsondata['e_mail'], jsondata['password'], jsondata['phone'])
+	sql = 'insert INTO user(name, email, password, phone, userType) values("{}", "{}", "{}", "{}", 0);'.format(jsondata['username'], jsondata['e_mail'], jsondata['password'], jsondata['phone'])
 	cur.execute(sql)
 	con.commit()
 	con.close()
