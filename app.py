@@ -52,11 +52,15 @@ def outCheckboard():
 	result = cur.fetchall()
 	result= result[0][0]
 	result = ast.literal_eval(result)
+	dateList = []
+
+	temp = dict()
+
 	if data in result.keys():
-		return jsonify(result)
+		print("기존 출력")
+		temp = result[data]
 	else:
-		temp = dict()
-		temp1 = dict()
+		print("생성")
 		for i in range(len(result["init"])):
 	
 			temp[str(i)] = {
@@ -64,14 +68,25 @@ def outCheckboard():
 				"name" : result["init"][str(i)]["name"],
 				"status" : 0
 			}
+		result[data] = temp
+		print(result)
+		sql = '''UPDATE classInfo SET attend = "{0}" where classId = {1}'''.format(result, str(jsondata["subId"]))
+		cur.execute(sql)
+		con.commit()
+	con.close()
 
-		print(result["init"])
-		print(temp)
 
-		out = {
+	for i in result.keys():
+		if i != "init":
+			dateList.append(i)
+	if not(data in result.keys()):
+		dateList.append(data)
+	out = {
+			"dateList" : dateList,
 			data : temp
 		}
-		return jsonify(out)
+
+	return jsonify(out)
 
 	
 
@@ -153,20 +168,6 @@ def registerw():
 	con.commit()
 	con.close()
 
-	# with open("userdata/userlist.json", "r") as fr:
-	# 	userdata = json.loads(fr.read())
-	# if jsondata["username"] in userdata["id"]:
-	# 	print("flag")
-	# 	return jsonify({"auth" : "false"})
-	# sql = 'insert '
-	# userdata["id"][jsondata['username']] = jsondata['password'] 
-	# out = json.dumps(userdata)
-
-	# with open("userdata/userlist.json", "w") as fa:
-	# 	fa.write(out)
-	
-	# with open("userdata/userlist.json", "r") as fb:
-	# 	print(json.loads(fb.read()))
 	
 
 	
