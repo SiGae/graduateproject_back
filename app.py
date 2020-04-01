@@ -12,6 +12,7 @@ import pandas as pd
 import pymysql
 import privateInfo as pri
 import ast
+import datetime
 
 def xlsxTojson(file):
 	df = pd.read_excel(file)
@@ -36,7 +37,38 @@ def xlsxTojson(file):
 
 app = Flask(__name__)
 
-@app.route('/getCheckMode', methods=['POST'])
+@app.route('/getCheckDate', methods=['POST'])
+def outDate():
+	jsondata = request.get_json()
+	print(jsondata)
+	for i in jsondata:
+		print(i)
+
+	sql = "select attend from classInfo where classId = {}".format(jsondata['subId'])
+	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
+	cur = con.cursor()
+	cur.execute(sql)
+
+	result = cur.fetchall()
+	result= result[0][0]
+	result = ast.literal_eval(result)
+	dateList = []
+	for i in result:
+		if i != "init":
+			dateList.append(i)
+	if len(dateList) == 0:
+		dt = datetime.datetime.now()
+		dateList.append("{0}/{1}".format(dt.month, dt.day))
+
+	out = {
+		"date" : dateList
+	}
+
+	print(out)
+	return jsonify(out)
+
+
+@app.route('/getStudentList', methods=['POST'])
 def outCheckboard():
 	jsondata = request.get_json()
 	print(jsondata)
@@ -75,16 +107,10 @@ def outCheckboard():
 		con.commit()
 	con.close()
 
-
-	for i in result.keys():
-		if i != "init":
-			dateList.append(i)
-	if not(data in result.keys()):
-		dateList.append(data)
 	out = {
-			"dateList" : dateList,
 			data : temp
 		}
+	
 
 	return jsonify(out)
 
