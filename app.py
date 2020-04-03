@@ -114,12 +114,43 @@ def outCheckboard():
 
 	return jsonify(out)
 
-	
+@app.route('/attendData', methods=['POST'])
+def updateAttend():
+	jsondata = request.get_json()
+	sql = "select attend from classInfo where classId = {}".format(jsondata['subId'])
+	con = pymysql.connect(host = 'localhost', port = 3306, user=pri.uid, db= pri.dbase, charset='utf8')
+	cur = con.cursor()
+	cur.execute(sql)
+
+	result = cur.fetchall()
+	result= result[0][0]
+
+
+	result = ast.literal_eval(result)
+	date = jsondata['month'] + "/" + jsondata['day']
+
+	constudent = dict()
+	for i in range(len(jsondata['studentList'])):
+		constudent[str(i)] = jsondata['studentList'][i]
+	print(date)
+	result[date] = constudent
+	sql ='''UPDATE classInfo SET attend = "{0}" where classId = {1}'''.format(result, str(jsondata["subId"]))
+	cur = con.cursor()
+
+	cur.execute(sql)
+	con.commit()
+
+
+	con.close()
+	out = {
+		'success' : 'true'
+	}
+	return jsonify(out)
 
 @app.route('/check', methods=['GET'])
 def alwayTrue():
 	return jsonify({
-		"userOnline" : "true"
+		'success' : "true"
 	})
 
 
