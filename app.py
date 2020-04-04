@@ -58,8 +58,10 @@ def outDate():
 	for i in result:
 		if i != "init":
 			dateList.append(i)
-	if len(dateList) == 0:
-		dt = datetime.datetime.now()
+		
+	dt = datetime.datetime.now()
+	date = "{0}/{1}".format(dt.month, dt.day)
+	if not(date in dateList):
 		dateList.append("{0}/{1}".format(dt.month, dt.day))
 
 	out = {
