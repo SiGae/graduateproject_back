@@ -100,6 +100,40 @@ def sortStudent(li):
 
 app = Flask(__name__)
 
+@app.route('/getAttendScore', methods=['POST'])
+def get_final_attend():
+    sql = "select attend from classInfo where classId = 44"
+    result = sql_select(sql)
+    result = ast.literal_eval(result[0][0])
+    li = []
+    print(result)
+    for i in range(len(result["init"])):
+        a = {
+            "id": result["init"][str(i)]["id"],
+            "name": result["init"][str(i)]["name"],
+            "출석": 0,
+            "결석": 0,
+            "지각": 0
+        }
+        for j in result:
+            print(result)
+            print(j)
+
+            if j != "init":
+                print(j)
+                if result[j][str(i)]["status"] == 0:
+                    a['출석'] += 1
+                elif result[j][str(i)]["status"] == 1:
+                    a['결석'] += 1
+                else:
+                    a['지각'] += 1
+        li.append(a)
+    result = {
+        'success': True,
+        'data': li
+    }
+    return result
+
 @app.route('/getGrade', methods=['POST'])
 def get_grade():
 	jsondata = request.get_json()
