@@ -13,7 +13,7 @@ import pymysql
 import privateInfo as pri
 import ast
 import datetime
-
+from operator import itemgetter
 
 
 def xlsxTojson(file):
@@ -49,12 +49,135 @@ def sql_exe(sqltext):
 	con = pymysql.connect(host = 'localhost', port=3306, user = pri.uid, db = pri.dbase, charset='utf8')
 	cur = con.cursor()
 	print(sqltext)
-	cur.execute(sqltext)
+	try:
+		cur.execute(sqltext)
+	except Exception as e:
+		print(e)
+
 	con.commit()
 	con.close()
 	return True
 
+def callFinalscore(subId):
+	sql = "select ratio from scoreRatio where classId = {}".format(subId)
+	result = sql_select(sql)
+	ratio = ast.literal_eval(result[0][0])
+	sql = "select perfect, list from scoreData where classId = {}".format(subId)
+	result = sql_select(sql)
+	perfect = ast.literal_eval(result[0][0])
+	score = ast.literal_eval(result[0][1])
+
+	ratios = []
+
+	print(ratio)
+
+	for i in ratio:
+		i = ast.literal_eval(ratio[i]['ratio'])
+		ratios.append(i)
+	perfect = perfect['perfectScore']
+	score = score['scorelist']
+
+	li = []
+
+	for i in range(len(score)):
+		result = dict()
+		target = score[i]
+		data = 0
+		for j in range(len(ratios)):
+			data += (eval(target['label'][j]) / eval(perfect[j]) * ratios[j])
+		result['id'] = target['id']
+		result['name'] = target['name']
+		result['score'] = data
+		result['grade'] = 'E'
+		li.append(result)
+	return li
+
+def sortStudent(li):
+	data = sorted(li, key = itemgetter('score'), reverse=True)
+	return data
+
+	
+
 app = Flask(__name__)
+
+@app.route('/getGrade', methods=['POST'])
+def get_grade():
+	jsondata = request.get_json()
+	classId = jsondata['subId']
+	sql = "select grade from GradeInfo where classId = {}".format(classId)
+	dt = sql_select(sql)
+
+	sclist = callFinalscore(classId)
+	li = sortStudent(sclist)
+	if len(dt) == 0:
+		print("ping")
+		sql = 'insert INTO GradeInfo(classId, grade) values ({}, "{}")'.format(classId, li)
+		sql_exe(sql)
+	else:
+		print("ping")
+		li = dt[0][0]
+		print(li)
+
+		li = li.replace("[", "")
+		li =li.replace("]", "")
+		li = li.replace("}, {", "}}, {{")
+		li = li.split("}, {")
+		print(li)
+		fi = []
+		for i in li:
+			a = ast.literal_eval(i)
+			fi.append(a)
+		li = fi
+	result = {
+		'success' : True,
+		'data' : li
+	}
+		
+
+	return result
+
+@app.route('/getTranscript', methods=['POST'])
+def getScore():
+	jsondata = request.get_json()
+	sql = "select perfect, list from scoreData where classId = {}".format(jsondata["subId"])
+	data = sql_select(sql)
+	result = dict()
+	if len(data) == 0:
+		result["score"] = False
+	else:
+		perfect = ast.literal_eval(data[0][0])
+		listt = ast.literal_eval(data[0][1])
+
+		result['score'] = True
+		a = dict()
+		a['perfectScore'] = perfect['perfectScore']
+		a['studentList'] = listt['scorelist']
+		result['data'] = a
+
+
+
+	return jsonify(result)
+
+@app.route('/sendScore', methods=['POST'])
+def sendScore():
+	jsondata = request.get_json()
+	# print(jsondata)
+	info0 = dict()
+	info1 = dict()
+	info0['scorelist'] = jsondata['studentList']
+	info1['perfectScore'] = jsondata['perfectScore']
+
+	sql = '''SELECT classId from scoreData where classId = {}'''.format(jsondata['subId'])
+	result = sql_select(sql)
+	if len(result) == 0:
+		sql = '''insert INTO scoreData(classId, list, perfect) values ({}, "{}", "{}")'''.format(jsondata['subId'], info0, info1)
+	else:
+		sql = '''UPDATE scoreData SET list = "{0}", perfect = "{1}" where classId = {2}'''.format(info0, info1, jsondata['subId'])
+	sql_exe(sql)
+
+	return jsonify({"success":True})
+
+
 
 @app.route('/getRatio', methods=['POST'])
 def getClassRatio():
@@ -162,8 +285,10 @@ def outCheckboard():
 			}
 		result[data] = temp
 		print(result)
-		sql = '''UPDATE classInfo SET attend = "{0}" where classId = {1}'''.format(result, str(jsondata["subId"]))
-		sql_exe(sql)
+		if data != "/":
+			sql = '''UPDATE classInfo SET attend = "{0}" where classId = {1}'''.format(result, str(jsondata["subId"]))
+			sql_exe(sql)
+
 
 	out = {
 			data : temp
@@ -252,7 +377,7 @@ def printlist():
 def registerw():
 	jsondata = request.get_json()
 	print(jsondata)
-
+	sql = 'insert INTO user(name, email, password, phone, userType) values("{}", "{}", "{}", "{}", 0);'.format(jsondata['username'], jsondata['e_mail'], jsondata['password'], jsondata['phone'])
 	sql_exe(sql)
 	
 	return jsonify({"auth" : "true"})
