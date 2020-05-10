@@ -13,6 +13,7 @@ import pymysql
 import privateInfo as pri
 import ast
 import datetime
+import hashlib
 from operator import itemgetter
 
 
@@ -61,11 +62,14 @@ def sql_exe(sqltext):
 def callFinalscore(subId):
 	sql = "select ratio from scoreRatio where classId = {}".format(subId)
 	result = sql_select(sql)
-	ratio = ast.literal_eval(result[0][0])
-	sql = "select perfect, list from scoreData where classId = {}".format(subId)
-	result = sql_select(sql)
-	perfect = ast.literal_eval(result[0][0])
-	score = ast.literal_eval(result[0][1])
+	try:
+		ratio = ast.literal_eval(result[0][0])
+		sql = "select perfect, list from scoreData where classId = {}".format(subId)
+		result = sql_select(sql)
+		perfect = ast.literal_eval(result[0][0])
+		score = ast.literal_eval(result[0][1])
+	except:
+		return True
 
 	ratios = []
 
@@ -84,7 +88,14 @@ def callFinalscore(subId):
 		target = score[i]
 		data = 0
 		for j in range(len(ratios)):
-			data += (eval(target['label'][j]) / eval(perfect[j]) * ratios[j])
+			if not(j in target['label']):
+				target['label'].append('0')
+			if target['label'][j] == "" :
+				target['label'][j] = '0'
+			try:
+				data += (eval(target['label'][j]) / eval(perfect[j]) * ratios[j])
+			except:
+				return True
 		result['id'] = target['id']
 		result['name'] = target['name']
 		result['score'] = data
@@ -96,77 +107,154 @@ def sortStudent(li):
 	data = sorted(li, key = itemgetter('score'), reverse=True)
 	return data
 
-	
+def duplicateId(id):
+	sql = 'SELECT name from user where name = "{}"'.format(id)
+	result = sql_select(sql)
+	if len(result) == 0:
+		return True
+	else:
+		return False
+
+
 
 app = Flask(__name__)
 
+@app.route('/manageGrade', methods=['POST'])
+def manage():
+	jsondata = request.get_json()
+	print(jsondata)
+	print(jsondata['gradeRatioArr'])
+	for i in jsondata:
+		print(i)
+	sql = '''UPDATE GradeInfo SET grade = "{0}", ratio = "{2}" where classId = {1}'''.format(jsondata['studentList'], jsondata['subId'], jsondata['gradeRatioArr'])
+	sql_exe(sql)
+	return jsonify({'success' : True})	
+
+
 @app.route('/getAttendScore', methods=['POST'])
 def get_final_attend():
-    sql = "select attend from classInfo where classId = 44"
-    result = sql_select(sql)
-    result = ast.literal_eval(result[0][0])
-    li = []
-    print(result)
-    for i in range(len(result["init"])):
-        a = {
-            "id": result["init"][str(i)]["id"],
-            "name": result["init"][str(i)]["name"],
-            "출석": 0,
-            "결석": 0,
-            "지각": 0
-        }
-        for j in result:
-            print(result)
-            print(j)
+	jsondata = request.get_json()
+	for i in jsondata:
+		print(i)
+	sql = "select attend from classInfo where classId = {}".format(jsondata['subId'])
+	result = sql_select(sql)
+	result = ast.literal_eval(result[0][0])
+	li = []
+	print(result)
+	for i in range(len(result["init"])):
+		a = {
+			"id": result["init"][str(i)]["id"],
+			"name": result["init"][str(i)]["name"],
+			"출석": 0,
+			"결석": 0,
+			"지각": 0
+		}
+		for j in result:
+			print(result)
+			print(j)
 
-            if j != "init":
-                print(j)
-                if result[j][str(i)]["status"] == 0:
-                    a['출석'] += 1
-                elif result[j][str(i)]["status"] == 1:
-                    a['결석'] += 1
-                else:
-                    a['지각'] += 1
-        li.append(a)
-    result = {
-        'success': True,
-        'data': li
-    }
-    return result
+			if j != "init":
+				print(j)
+				if result[j][str(i)]["status"] == 0:
+					a['출석'] += 1
+				elif result[j][str(i)]["status"] == 1:
+					a['결석'] += 1
+				else:
+					a['지각'] += 1
+		li.append(a)
+	result = {
+    	'success': True,
+		'data': li
+		}
+	return result
+
+@app.route('/getlist', methods=['POST'])
+def getstulist():
+	jsondata = request.get_json()
+	classId = jsondata['subId']
+	
+	sql = "select attend from classInfo where classId = {}".format(jsondata['subId'])
+	result= sql_select(sql)
+	result = ast.literal_eval(result[0][0])
+	result = result['init']
+	datalist = []
+
+	for i in result:
+		asp = {
+			"id" : result[i]['id'],
+			"name" : result[i]['name']
+		}
+		datalist.append(asp)
+
+	temp = {
+		'success' : True,
+		'data' : datalist
+	}
+	return jsonify(temp)
+
 
 @app.route('/getGrade', methods=['POST'])
 def get_grade():
 	jsondata = request.get_json()
 	classId = jsondata['subId']
-	sql = "select grade from GradeInfo where classId = {}".format(classId)
+	sql = "select grade, ratio from GradeInfo where classId = {}".format(classId)
 	dt = sql_select(sql)
-
+	sclist = False
 	sclist = callFinalscore(classId)
+	if sclist == True:
+		return jsonify({'success' : False})
 	li = sortStudent(sclist)
 	if len(dt) == 0:
 		print("ping")
 		sql = 'insert INTO GradeInfo(classId, grade) values ({}, "{}")'.format(classId, li)
 		sql_exe(sql)
+		temp = li
+		li = {
+			'studentList' : temp,
+			'gradeRatioArr' : ["", "", "", ""],
+			'Fcount' : 0
+		}
 	else:
-		print("ping")
+		print("pinga")
+		
 		li = dt[0][0]
-		print(li)
-
 		li = li.replace("[", "")
 		li =li.replace("]", "")
 		li = li.replace("}, {", "}}, {{")
 		li = li.split("}, {")
-		print(li)
 		fi = []
+		cnt = 0
 		for i in li:
 			a = ast.literal_eval(i)
 			fi.append(a)
+		for i in fi:
+			if i['grade'] == 'F':
+				cnt += 1
+
+		print(cnt)
 		li = fi
+		temp = li
+	
+		li = {
+			'studentList' : temp,
+			'gradeRatioArr' : ["", "", "", ""],
+			'Fcount' : cnt
+		}
+		di = dt[0][1]
+		if di != None:
+			di = di.replace("[", "")
+			di =di.replace("]", "")
+			di = di.replace("}, {", "}}, {{")
+			di = di.split("}, {")
+			a = ast.literal_eval(di[0])
+			li['gradeRatioArr'] = a
+
+
+
 	result = {
 		'success' : True,
 		'data' : li
 	}
-		
 
 	return result
 
@@ -181,12 +269,25 @@ def getScore():
 	else:
 		perfect = ast.literal_eval(data[0][0])
 		listt = ast.literal_eval(data[0][1])
+		sql = "select ratio from scoreRatio where classId = {}".format(jsondata["subId"])
+		result = sql_select(sql)
+		result = ast.literal_eval(result[0][0])
+
+		perfect = perfect['perfectScore']
+		listt = listt["scorelist"]
+
+		if len(result) != len(perfect):
+			while (len(result) != len(perfect)):
+				perfect.append("")
+				for i in listt:
+					i['label'].append("")
 
 		result['score'] = True
 		a = dict()
-		a['perfectScore'] = perfect['perfectScore']
-		a['studentList'] = listt['scorelist']
+		a['perfectScore'] = perfect
+		a['studentList'] = listt
 		result['data'] = a
+		
 
 
 
@@ -319,9 +420,10 @@ def outCheckboard():
 			}
 		result[data] = temp
 		print(result)
-		if data != "/":
+		if data != None and data != "/":
 			sql = '''UPDATE classInfo SET attend = "{0}" where classId = {1}'''.format(result, str(jsondata["subId"]))
 			sql_exe(sql)
+		
 
 
 	out = {
@@ -349,6 +451,8 @@ def updateAttend():
 
 	sql ='''UPDATE classInfo SET attend = "{0}" where classId = {1}'''.format(result, str(jsondata["subId"]))
 	sql_exe(sql)
+
+
 	out = {
 		'success' : 'true'
 	}
@@ -411,10 +515,14 @@ def printlist():
 def registerw():
 	jsondata = request.get_json()
 	print(jsondata)
-	sql = 'insert INTO user(name, email, password, phone, userType) values("{}", "{}", "{}", "{}", 0);'.format(jsondata['username'], jsondata['e_mail'], jsondata['password'], jsondata['phone'])
-	sql_exe(sql)
+	if duplicateId(jsondata['username']):
+		sql = 'insert INTO user(name, email, password, phone, userType) values("{}", "{}", "{}", "{}", 0);'.format(jsondata['username'], jsondata['e_mail'], jsondata['password'], jsondata['phone'])
+		sql_exe(sql)
 	
-	return jsonify({"auth" : "true"})
+		return jsonify({"auth" : "true"})
+	else:
+		return jsonify({"auth" : "false"})
+
 
 
 @app.route('/logout', methods=['POST'])
