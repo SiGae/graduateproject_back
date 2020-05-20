@@ -64,6 +64,7 @@ def callFinalscore(subId):
 	result = sql_select(sql)
 	try:
 		ratio = ast.literal_eval(result[0][0])
+		print(ratio)
 		sql = "select perfect, list from scoreData where classId = {}".format(subId)
 		result = sql_select(sql)
 		perfect = ast.literal_eval(result[0][0])
@@ -72,12 +73,15 @@ def callFinalscore(subId):
 		return True
 
 	ratios = []
+	raname = []
 
 	print(ratio)
 
 	for i in ratio:
+		raname.append(ratio[i]['name'])
 		i = ast.literal_eval(ratio[i]['ratio'])
 		ratios.append(i)
+	print(raname)
 	perfect = perfect['perfectScore']
 	score = score['scorelist']
 
@@ -85,6 +89,7 @@ def callFinalscore(subId):
 
 	for i in range(len(score)):
 		result = dict()
+		sc = []
 		target = score[i]
 		data = 0
 		for j in range(len(ratios)):
@@ -93,12 +98,16 @@ def callFinalscore(subId):
 			if target['label'][j] == "" :
 				target['label'][j] = '0'
 			try:
+				print(raname[j])
+				print(target['label'][j])
+				sc.append({'coname' : raname[j], 'score' : target['label'][j]})
 				data += (eval(target['label'][j]) / eval(perfect[j]) * ratios[j])
 			except:
 				return True
 		result['id'] = target['id']
 		result['name'] = target['name']
 		result['score'] = data
+		result['component'] = sc
 		result['grade'] = 'E'
 		li.append(result)
 	return li
@@ -127,6 +136,7 @@ def manage():
 	for i in jsondata:
 		print(i)
 	sql = '''UPDATE GradeInfo SET grade = "{0}", ratio = "{2}" where classId = {1}'''.format(jsondata['studentList'], jsondata['subId'], jsondata['gradeRatioArr'])
+	print("ping")
 	sql_exe(sql)
 	return jsonify({'success' : True})	
 
@@ -215,25 +225,74 @@ def get_grade():
 			'Fcount' : 0
 		}
 	else:
-		print("pinga")
 		
+
+		# sql = "select list from scoreData where classId = " + str(classId)
+		# res = sql_select(sql)
+		# res = ast.literal_eval(res[0][0])
+		# res = res['scorelist']
+		# print("aaa")
+		# print(res)
+		# print("bbb")
 		li = dt[0][0]
-		li = li.replace("[", "")
-		li =li.replace("]", "")
-		li = li.replace("}, {", "}}, {{")
-		li = li.split("}, {")
+		li = li[1:]
+		li = li[:-1]
+		# li = li.replace("}, {", "}}, {{")
+		# li = li.split("}, {")
+		li = ast.literal_eval(li)
 		fi = []
 		cnt = 0
 		for i in li:
-			a = ast.literal_eval(i)
-			fi.append(a)
+			fi.append(i)
 		for i in fi:
 			if i['grade'] == 'F':
 				cnt += 1
-
-		print(cnt)
 		li = fi
 		temp = li
+		print("asdf")
+		print(temp)
+		print("bf")
+
+		# for i in range(len(res)):
+		# 	for j in temp:
+		# 		if res[i]['id'] == j['id']:
+		# 			for k in range(len(j['component'])):
+						
+		# 				j['component'][k]['score'] = res[i]['label'][k]
+		# 			break
+
+		# sql = "select ratio from scoreRatio where classId = " + str(classId)
+		# res = sql_select(sql)
+		# res = ast.literal_eval(res[0][0])
+		# scolist = []
+		# for i in range(len(res)):
+		# 	scolist.append(int(res[str(i)]["ratio"]))
+		# print(scolist)
+		# sql = "select perfect from scoreData where classId = " + str(classId)
+		# persclist = sql_select(sql)
+		# persclist = ast.literal_eval(persclist[0][0])
+		# print()
+		# persclist = persclist['perfectScore']
+
+		# for i in temp:
+		# 	sco = 0
+		# 	for j in range(len(scolist)):
+		# 		ta = 0
+		# 		try:
+
+		# 			if i['component'][j]['score'] != '' and persclist[j] != '' and scolist[j] != '':
+		# 				ta = int(i['component'][j]['score']) / int(persclist[j]) * scolist[j]
+		# 		except:
+		# 			i['component'].append({
+		# 				'coname' : '',
+		# 				'score' : ''
+		# 			})
+		# 		sco += ta
+		# 	i['score'] = sco
+		
+		# temp = sortStudent(temp)
+
+			
 	
 		li = {
 			'studentList' : temp,
@@ -247,8 +306,8 @@ def get_grade():
 			di = di.replace("}, {", "}}, {{")
 			di = di.split("}, {")
 			a = ast.literal_eval(di[0])
+			print(a)
 			li['gradeRatioArr'] = a
-
 
 
 	result = {
@@ -355,11 +414,24 @@ def createRatio():
 	print(ratio)
 	sql = '''SELECT classId from scoreRatio where classId = {}'''.format(jsondata['subId'])
 	result = sql_select(sql)
+	flag =  False
 	if len(result) == 0:
 		sql = '''insert INTO scoreRatio(classId, ratio) values ({}, "{}")'''.format(jsondata['subId'], ratio)
 	else:
 		sql = '''UPDATE scoreRatio SET ratio = "{0}" where classId = {1}'''.format(ratio, jsondata['subId'])
+		flag = True
 	sql_exe(sql)
+	if flag:
+		sql = '''SELECT classId from GradeInfo where classId = {}'''.format(jsondata['subId'])
+		result = sql_select(sql)
+		if len(result) != 0:
+			sql = '''delete from GradeInfo where classId = {}'''.format(jsondata['subId'])
+			sql_exe(sql)
+		sql = '''SELECT classId from scoreData where classId = {}'''.format(jsondata['subId'])
+		result = sql_select(sql)
+		if len(result) != 0:
+			sql = '''delete from scoreData where classId = {}'''.format(jsondata['subId'])
+			sql_exe(sql)
 	return jsonify({"success":True})
 
 @app.route('/getCheckDate', methods=['POST'])
